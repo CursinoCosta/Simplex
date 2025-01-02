@@ -31,6 +31,28 @@ def makeMatrixFullRank(A):
 #######################################################
 
 
+def Abc(M):
+  obj = M[0][-1]
+  c = M[0][:-1]
+  b = []
+  A = []
+  for r in M[0:]:
+    b.append(r[-1])
+    A.append(r[:-1])
+  A = np.array(A)
+  b = np.array(b)
+
+  return A,b,c,obj
+
+
+def Pivot(M, l1, l2, mul):
+  print(M[l1])
+  aux = M[l1] + M[l2]*mul
+  M[l1] = aux
+  print(M[l2]*mul)
+  print(M[l1])
+  return M
+
 def MatrizInit(filename):
     with open(filename,'r') as f:
         #lendo arquivo
@@ -73,17 +95,23 @@ def MatrizInit(filename):
             A.append(newres)
             count2 += 1
 
-    A = np.array(A)
-    b = np.array(b)
-    c = np.array(c)
-    
-    return(A, b, c)
+
+    M = [c]
+    aux = 0
+    for l in A:
+        M.append(l+[b[aux]])
+        aux += 1
+
+ 
+    M = np.array(M,dtype=float)
+
+
+    return(M)
 
     
-    #matriz = np.array()
-
-
-(A, b, c) = MatrizInit('test.txt')
-print(A,b,c)
+M = MatrizInit('test.txt')
+print(M)
+(A,b,c,obj) = Abc(M)
+print(A,b,c,obj)
     
 

@@ -1,4 +1,7 @@
 1- entender matrizes no numpy OK
 2- ler entrada OK
-3- Implmentacao simplex pelo pseudo codigo
-4- Testes
+3- Pivoteador e Abc Ok
+4- Busca de base inicial (Auxiliar)
+5- Simplex
+6- Parametros de entrada
+7- Testes
