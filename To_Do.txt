@@ -1,8 +1,8 @@
 1- entender matrizes no numpy OK
 2- ler entrada OK
-3- Pivoteador e Abc Ok
-4- Transformar em PFI ok
-5- Simplex
+3- Pivoteador e Abc OK
+4- Transformar em PFI OK
+5- Simplex OKish
 6- Busca de base inicial (Auxiliar)
 7- Parametros de entrada
 8- Testes

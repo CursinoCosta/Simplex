@@ -50,6 +50,24 @@ def Pivot(M, l1, l2, mul): #funcao de pivoteamento
   M[l1] = aux
   return M
 
+def CanonCheck(M): #checa se uma matriz esta na forma canonica
+  if(np.all(M[0][:-1] != 0)):
+    return False
+  else:
+    pos = [False]*(M.shape[0]-1)
+    count = 0
+    for col in M.T:
+      if(np.all(np.isin(col,[0,1])) and col.sum()==1 and M[0][count]==0):
+        for i in range(1,M.shape[0]):
+          if(M[i][count]==1):
+            pos[i-1] = True
+            break
+            
+      count+=1
+    if(np.all(pos)): 
+      return True
+  return False
+
 def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
     with open(filename,'r') as f:
         #lendo arquivo
@@ -85,6 +103,10 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
         if(r[nvars] != '=='): #se a restriçao ja não é uma igualdade
             nNewvars += 1
             isNewvar[count1] = 1
+            if(r[nvars] == '>='):
+               VarsRes.append(-1)
+            else:
+               VarsRes.append(1)
         count1 += 1
     b = list(map(float, b)) #b é matriz de float
 
@@ -100,9 +122,6 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
             newres = r[:nvars] + [0]*count2 + [1] + [0]*(nNewvars-(count2+1))
 
         newres = list(map(float, newres))
-        if(r[nvars] == '>='):
-            newres = [-x for x in newres[:nvars]]+newres[nvars:]
-            b[count2] *= -1
         A.append(newres)
         count2 += 1
 
@@ -140,13 +159,56 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
 
     return(M)
 
+def protdiv(objs, col):
+  out = []
+  for i in range(len(col)):
+    if(col[i] <= 0):
+      out.append(float('inf'))
+    else:
+      out.append(objs[i]/col[i])
+  print(out) #bom print pro passo a passo
+  return out
 
 def Simplex(M):
-    (A,b,c) = Abc(M)
+    (A,b,c,obj) = Abc(M)
+    cminus = -c
+    M[0][:-1] = cminus
+    print(M,'\n---------\n')
+    itr = 1
+    otimo = False
+    if(not CanonCheck(M)):
+       print('canonize')
+       return 0     
+    while(not otimo):
+        print('iteração: ',itr)
+        print('c: ',cminus)
+
+        pivo = np.argmin(cminus)
+        print('pivo: ',pivo)
+
+        lchoice = (np.argmin(protdiv(M.T[-1][1:],M.T[pivo][1:]))+1) 
+        print('lchoice: ',lchoice)
+
+        M[lchoice] = M[lchoice]/M[lchoice][pivo]
+
+        for i in range(M.shape[0]):
+          if(i == lchoice or M[i][pivo] == 0): continue
+          M = Pivot(M,i,lchoice,-(M[i][pivo]/M[lchoice][pivo]))
+        
+        if(np.all(cminus >= 0)):
+            otimo = True
+        itr+=1
+        print(M,'\n---------\n')
+        cminus = (M[0][:-1])
+    return M
+
+
 
     
 M = MatrizInit('test.txt')
-print(M)
+#print(M)
+Simplex(M)
+
 # (A,b,c,obj) = Abc(M)
 # print(A,b,c,obj)
     
