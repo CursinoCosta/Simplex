@@ -45,9 +45,12 @@ def Abc(M): #recebe uma matriz M e retorna suas parte matiz A, vetores b,c e o v
   return A,b,c,obj
 
 
-def Pivot(M, l1, l2, mul): #funcao de pivoteamento
-  aux = M[l1] + M[l2]*mul
-  M[l1] = aux
+def Pivot(M, lalvo, l2, mul, id):
+  aux = M[lalvo] + M[l2]*mul
+  M[lalvo] = aux.round(decimals=2)
+
+  auxi = id[lalvo] + id[l2]*mul
+  id[lalvo] = auxi.round(decimals=2)
   return M
 
 def CanonCheck(M): #checa se uma matriz esta na forma canonica
@@ -159,17 +162,17 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
 
     return(M)
 
-def protdiv(objs, col): #divisao protegida para arrays e listas
+def protdiv(objs, col):
   out = []
   for i in range(len(col)):
     if(col[i] <= 0):
       out.append(float('inf'))
     else:
-      out.append(objs[i]/col[i])
+      out.append(round(objs[i]/col[i],2))
   print(out) #bom print pro passo a passo
   return out
 
-  def findIdent(M): #funcao que acha o que falta da identeidade e para a canonizacao da matriz
+def findIdent(M): #funcao que acha o que falta da identeidade e para a canonizacao da matriz
     Ipos = [False]*(M.shape[0]-1)
     Cpos = [False]*(M.shape[0]-1)
     count = 0
@@ -182,50 +185,92 @@ def protdiv(objs, col): #divisao protegida para arrays e listas
                     if(M[0][count]==0):
                         Cpos[i-1] = True
                     else:
-                        incompletos.append(count)
+                        incompletos.append((count,i))
                 break
         count += 1
-    return Ipos,Cpos,incompletos
+    return Ipos,incompletos
 
-def Simplex(M): #simplex
-    (A,b,c,obj) = Abc(M)
-    cminus = -c
-    M[0][:-1] = cminus
-    print(M,'\n---------\n')
+def Simplex(M,id,exec): #simplex
+    print('iniciei')
+    for i in range(1,M.shape[0]):
+       if(M[i][-1] < 0):
+          M[i] *= -1
+          id[i] *= -1
+    M[0] *= -1
+    cminus = M[0]
+    print('************','\n',id,'\n',M,'\n---------\n')
     itr = 1
     otimo = False
     if(not CanonCheck(M)):
-       print('canonize')
-       return 0     
+       print('not canon')
+       print(M)      
+       (Ipos,incompletos) = findIdent(M)
+
+       if(np.any(Ipos)):
+            for col,row in incompletos:
+                M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id)
+
+       if(np.any(Ipos.count(False))):
+            auxc = [0]*(M.shape[1]-1) + [1]*Ipos.count(False) + [0]
+            auxM = M.copy()
+            I = np.insert(np.identity(auxM.shape[0]-1),0,-1,axis=0)
+            for i in range(len(Ipos)):
+                if(Ipos[i]): continue
+                else:
+                  auxM = np.insert(auxM,auxM.shape[1]-1,I.T[i],axis=1)
+            auxM[0] = auxc
+            (auxIpos,auxincompletos) = findIdent(auxM)
+            for col,row in auxincompletos:
+                auxM = Pivot(auxM,0,row,-(auxM[0][col]/auxM[row][col]),id)
+            auxM[0] = -auxM[0]
+            print(id)
+            exec +=1
+            id = Simplex(auxM,id,exec)
+            
+            print('b',type(id))
+            print(exec)
+            return('parada')
+            print('a',auxM)
+            print(id)
+            if(auxM[0][-1] != 0):
+                return('Inviavel')
+            else:
+                return('canonize')
     while(not otimo):
+        M[0][np.isclose(M[0], 0)] = 0
         print('iteração: ',itr)
         print('c: ',cminus)
 
-        pivo = np.argmin(cminus)
+        pivo = np.argmin(cminus[:-1])
         print('pivo: ',pivo)
 
         lchoice = (np.argmin(protdiv(M.T[-1][1:],M.T[pivo][1:]))+1) 
         print('lchoice: ',lchoice)  
 
-        M[lchoice] = M[lchoice]/M[lchoice][pivo]
+        temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=2)
+        M[lchoice] = (M[lchoice]/M[lchoice][pivo]).round(decimals=2)
+        id[lchoice] = temp
 
         for i in range(M.shape[0]):
-          if(i == lchoice or M[i][pivo] == 0): continue
-          M = Pivot(M,i,lchoice,-(M[i][pivo]/M[lchoice][pivo]))
-        
-        if(np.all(cminus >= 0)):
+            if(i == lchoice or M[i][pivo] == 0): continue
+            M = Pivot(M,i,lchoice,-(round(M[i][pivo]/M[lchoice][pivo],2)),id)
+
+        cminus = (M[0])
+        if(np.all(cminus[:-1] >= 0)):
             otimo = True
         itr+=1
         print(M,'\n---------\n')
-        cminus = (M[0][:-1])
-    return M
-
+        print(id,'\n---------\n')
+    out = id
+    print('a',type(out))
+    return out  
 
 
     
 M = MatrizInit('test.txt')
+id = np.insert(np.identity(M.shape[0]-1),0,0,axis=0)
 #print(M)
-Simplex(M)
+Simplex(M,id,0)
 
 # (A,b,c,obj) = Abc(M)
 # print(A,b,c,obj)

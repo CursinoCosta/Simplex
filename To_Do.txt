@@ -3,6 +3,7 @@
 3- Pivoteador e Abc OK
 4- Transformar em PFI OK
 5- Simplex OKish
-6- Busca de base inicial (Auxiliar)
+6- Busca de base inicial (Auxiliar) 
+    Criar caminhador para evitar bug
 7- Parametros de entrada
 8- Testes
