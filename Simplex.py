@@ -159,7 +159,7 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
 
     return(M)
 
-def protdiv(objs, col):
+def protdiv(objs, col): #divisao protegida para arrays e listas
   out = []
   for i in range(len(col)):
     if(col[i] <= 0):
@@ -169,7 +169,25 @@ def protdiv(objs, col):
   print(out) #bom print pro passo a passo
   return out
 
-def Simplex(M):
+  def findIdent(M): #funcao que acha o que falta da identeidade e para a canonizacao da matriz
+    Ipos = [False]*(M.shape[0]-1)
+    Cpos = [False]*(M.shape[0]-1)
+    count = 0
+    incompletos = []
+    for col in M.T:
+        if(np.all(np.isin(col[1:],[0,1])) and col[1:].sum()==1):
+            for i in range(1,M.shape[0]):
+                if(M[i][count]==1):
+                    Ipos[i-1] = True
+                    if(M[0][count]==0):
+                        Cpos[i-1] = True
+                    else:
+                        incompletos.append(count)
+                break
+        count += 1
+    return Ipos,Cpos,incompletos
+
+def Simplex(M): #simplex
     (A,b,c,obj) = Abc(M)
     cminus = -c
     M[0][:-1] = cminus
@@ -187,7 +205,7 @@ def Simplex(M):
         print('pivo: ',pivo)
 
         lchoice = (np.argmin(protdiv(M.T[-1][1:],M.T[pivo][1:]))+1) 
-        print('lchoice: ',lchoice)
+        print('lchoice: ',lchoice)  
 
         M[lchoice] = M[lchoice]/M[lchoice][pivo]
 
