@@ -31,20 +31,6 @@ def makeMatrixFullRank(A):
 #######################################################
 
 
-def Abc(M): #recebe uma matriz M e retorna suas parte matiz A, vetores b,c e o valor objetivo obj
-  obj = M[0][-1]
-  c = M[0][:-1]
-  b = []
-  A = []
-  for r in M[0:]:
-    b.append(r[-1])
-    A.append(r[:-1])
-  A = np.array(A)
-  b = np.array(b)
-
-  return A,b,c,obj
-
-
 def Pivot(M, lalvo, l2, mul, id):
   aux = M[lalvo] + M[l2]*mul
   M[lalvo] = aux.round(decimals=2)
@@ -77,7 +63,7 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
         nvars = int(f.readline())
         nres = int(f.readline())
         VarsRes = list(map(float, f.readline().split()))
-        coefs = list(map(float, f.readline().split()))
+        coefs = list(map(float, f.readline().split()[1:]))
         #restricoes
         res = []
         for l in f:
@@ -99,44 +85,40 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
     #iterando pelas restricoes e extraindo info delas
     b = []
     nNewvars = 0
-    isNewvar = [0]*nres #check para ver se aquela restricoes recebe variavel de folga
-    count1 = 0
+    isNewvar = [False]*nres #check para ver se aquela restricoes recebe variavel de folga
+    count = 0
     for r in res:
         b.append(r[-1]) #construindo b
         if(r[nvars] != '=='): #se a restriçao ja não é uma igualdade
             nNewvars += 1
-            isNewvar[count1] = 1
+            isNewvar[count] = True
             if(r[nvars] == '>='):
                VarsRes.append(-1)
             else:
                VarsRes.append(1)
-        count1 += 1
+        count += 1
     b = list(map(float, b)) #b é matriz de float
 
     c = coefs + [0]*(nNewvars + 1) #c ampliado no numero de novas vars
 
     #construindo A
     A = []
-    count2 = 0
+    count = 0
     for r in res:
-        if(isNewvar[count2] == 0):
-            newres = r[:nvars] + [0]*(nNewvars-1)
+        if(not isNewvar[count]):
+            newres = r[:nvars] + [0]*(nNewvars)
         else:
-            newres = r[:nvars] + [0]*count2 + [1] + [0]*(nNewvars-(count2+1))
+            newres = r[:nvars] + [0]*count + [1] + [0]*(nNewvars-(count+1))
 
         newres = list(map(float, newres))
         A.append(newres)
-        count2 += 1
-
-
+        count += 1
     M = [c]
     aux = 0
     for l in A:
         M.append(l+[b[aux]])
         aux += 1
-
-
- 
+    print(M)
     M = np.array(M,dtype=float)
 
 #tornando todas as variaveis restritas >=0
@@ -186,56 +168,17 @@ def findIdent(M): #funcao que acha o que falta da identeidade e para a canonizac
                         Cpos[i-1] = True
                     else:
                         incompletos.append((count,i))
-                break
+                    break
         count += 1
     return Ipos,incompletos
 
-def Simplex(M,id,exec): #simplex
-    print('iniciei')
-    for i in range(1,M.shape[0]):
-       if(M[i][-1] < 0):
-          M[i] *= -1
-          id[i] *= -1
-    M[0] *= -1
+def Caminhador(M, id):
     cminus = M[0]
-    print('************','\n',id,'\n',M,'\n---------\n')
+    print('xxxxxxxxxxx','\n',id,'\n',M,'\n---------\n')
     itr = 1
     otimo = False
-    if(not CanonCheck(M)):
-       print('not canon')
-       print(M)      
-       (Ipos,incompletos) = findIdent(M)
-
-       if(np.any(Ipos)):
-            for col,row in incompletos:
-                M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id)
-
-       if(np.any(Ipos.count(False))):
-            auxc = [0]*(M.shape[1]-1) + [1]*Ipos.count(False) + [0]
-            auxM = M.copy()
-            I = np.insert(np.identity(auxM.shape[0]-1),0,-1,axis=0)
-            for i in range(len(Ipos)):
-                if(Ipos[i]): continue
-                else:
-                  auxM = np.insert(auxM,auxM.shape[1]-1,I.T[i],axis=1)
-            auxM[0] = auxc
-            (auxIpos,auxincompletos) = findIdent(auxM)
-            for col,row in auxincompletos:
-                auxM = Pivot(auxM,0,row,-(auxM[0][col]/auxM[row][col]),id)
-            auxM[0] = -auxM[0]
-            print(id)
-            exec +=1
-            id = Simplex(auxM,id,exec)
-            
-            print('b',type(id))
-            print(exec)
-            return('parada')
-            print('a',auxM)
-            print(id)
-            if(auxM[0][-1] != 0):
-                return('Inviavel')
-            else:
-                return('canonize')
+    if(np.all(cminus[:-1] >= 0)):
+        otimo = True
     while(not otimo):
         M[0][np.isclose(M[0], 0)] = 0
         print('iteração: ',itr)
@@ -244,7 +187,10 @@ def Simplex(M,id,exec): #simplex
         pivo = np.argmin(cminus[:-1])
         print('pivo: ',pivo)
 
-        lchoice = (np.argmin(protdiv(M.T[-1][1:],M.T[pivo][1:]))+1) 
+        divs = protdiv(M.T[-1][1:],M.T[pivo][1:])
+        if(divs.count(float('inf')) == len(divs)):
+            return('Ilimitada')
+        lchoice = (np.argmin(divs)+1) 
         print('lchoice: ',lchoice)  
 
         temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=2)
@@ -261,16 +207,78 @@ def Simplex(M,id,exec): #simplex
         itr+=1
         print(M,'\n---------\n')
         print(id,'\n---------\n')
-    out = id
-    print('a',type(out))
-    return out  
+    print('xxxxxxxx')
+    return M, id
+
+def Simplex(M,id): #simplex
+    print('iniciei')
+    backup = M.copy()
+    for i in range(1,M.shape[0]):
+       if(M[i][-1] < 0):
+          M[i] *= -1
+          id[i] *= -1
+    M[0] *= -1
+    print('************','\n',id,'\n',M,'\n---------\n')
+    itr = 1
+    otimo = False
+    if(not CanonCheck(M)):
+       print('not canon')
+       print(M)      
+       (Ipos,incompletos) = findIdent(M)
+
+       if(np.any(Ipos)):
+            for col,row in incompletos:
+                M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id)
+
+       if(np.any(Ipos.count(False))):
+            auxc = [0]*(M.shape[1]-1) + [1]*Ipos.count(False) + [0]
+            auxM = M.copy()
+            I = np.insert(np.identity(auxM.shape[0]-1),0,-1,axis=0)
+            n_aux_r = 0
+            for i in range(len(Ipos)):
+                if(Ipos[i]): continue
+                else:
+                    auxM = np.insert(auxM,auxM.shape[1]-1,I.T[i],axis=1)
+                    n_aux_r += 1
+            auxM[0] = auxc
+            (auxIpos,auxincompletos) = findIdent(auxM)
+            for col,row in auxincompletos:
+                auxM = Pivot(auxM,0,row,-(auxM[0][col]/auxM[row][col]),id)
+            auxM[0] = -auxM[0]
+            tup = Caminhador(auxM,id)
+            if(type(tup) == str):
+                return("Ilimitada")
+            (auxM, id) = tup
+            print('a',auxM)
+            print(id)
+            if(auxM[0][-1] != 0):
+                return('Inviavel')
+            else:
+                M = np.delete(auxM, [x for x in range(-(n_aux_r+1),-1)],axis=1)
+                print('pre\n',M)
+                M[0] = backup[0]
+                print('pos\n',M)
+                print('id\n',id)
+                (fIpos,f_incompletos) = findIdent(M)
+                print(fIpos, f_incompletos)
+                if(np.all(fIpos)):
+                    for col,row in f_incompletos:
+                        M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id)
+                    print('pos2\n',M)
+                    M[0] *= -1
+                else: return('Erro!')
+            #return('canonize')
+    tup = Caminhador(M,id)
+    if(type(tup) == str):
+        return('Ilimitada')
+    return M, id  
 
 
     
 M = MatrizInit('test.txt')
 id = np.insert(np.identity(M.shape[0]-1),0,0,axis=0)
 #print(M)
-Simplex(M,id,0)
+print(Simplex(M,id))
 
 # (A,b,c,obj) = Abc(M)
 # print(A,b,c,obj)
