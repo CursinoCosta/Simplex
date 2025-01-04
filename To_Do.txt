@@ -4,5 +4,5 @@
 4- Transformar em PFI OK
 5- Simplex OK
 6- Busca de base inicial (Auxiliar) OK
-7- Parametros de entrada
+7- Impressão, minmax, multi otimo e parametros de entrada
 8- Testes

@@ -277,8 +277,13 @@ def Simplex(M,id): #simplex
     
 M = MatrizInit('test.txt')
 id = np.insert(np.identity(M.shape[0]-1),0,0,axis=0)
-#print(M)
-print(Simplex(M,id))
+
+status = Simplex(M,id)
+if(type(status) == str):
+    print(status)
+else:
+    (M,id) = status
+
 
 # (A,b,c,obj) = Abc(M)
 # print(A,b,c,obj)
