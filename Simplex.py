@@ -63,7 +63,9 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
         nvars = int(f.readline())
         nres = int(f.readline())
         VarsRes = list(map(float, f.readline().split()))
-        coefs = list(map(float, f.readline().split()[1:]))
+        coefs = f.readline().split()
+        minmax = coefs[0]
+        coefs = list(map(float, coefs[1:]))
         #restricoes
         res = []
         for l in f:
@@ -141,8 +143,9 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
                 VarsRes.insert(count+1, 1)
         count += 1
 
-
-    return(M)
+    if(minmax == 'min'):
+        M[0] *= -1
+    return(M, minmax)
 
 def protdiv(objs, col):
   out = []
@@ -189,7 +192,7 @@ def Caminhador(M, id):
 
         divs = protdiv(M.T[-1][1:],M.T[pivo][1:])
         if(divs.count(float('inf')) == len(divs)):
-            return('Ilimitada')
+            return('ilimitado')
         lchoice = (np.argmin(divs)+1) 
         print('lchoice: ',lchoice)  
 
@@ -210,7 +213,7 @@ def Caminhador(M, id):
     print('xxxxxxxx')
     return M, id
 
-def Simplex(M,id): #simplex
+def Simplex(M,id,minmax = 'max'): #simplex
     print('iniciei')
     backup = M.copy()
     for i in range(1,M.shape[0]):
@@ -247,12 +250,12 @@ def Simplex(M,id): #simplex
             auxM[0] = -auxM[0]
             tup = Caminhador(auxM,id)
             if(type(tup) == str):
-                return("Ilimitada")
+                return("ilimitado")
             (auxM, id) = tup
             print('a',auxM)
             print(id)
             if(auxM[0][-1] != 0):
-                return('Inviavel')
+                return('inviavel')
             else:
                 M = np.delete(auxM, [x for x in range(-(n_aux_r+1),-1)],axis=1)
                 print('pre\n',M)
@@ -270,20 +273,76 @@ def Simplex(M,id): #simplex
             #return('canonize')
     tup = Caminhador(M,id)
     if(type(tup) == str):
-        return('Ilimitada')
+        return('ilimitado')
+    (M,id) = tup
     return M, id  
 
 
     
-M = MatrizInit('test.txt')
+(M, minmax) = MatrizInit('test.txt')
 id = np.insert(np.identity(M.shape[0]-1),0,0,axis=0)
 
-status = Simplex(M,id)
+status = Simplex(M,id,minmax)
 if(type(status) == str):
-    print(status)
+    print('Status: ',status)
+    exit(0)
 else:
     (M,id) = status
+l = M[0][:-1].copy().tolist() #numero de 0 em c
+multi = l.count(0) > M.shape[0]
 
+Ipos, _ = findIdent(M)
+x = np.nonzero(Ipos)
+print(Ipos)
+x = M[0][Ipos]
+
+
+otimo = M[0][-1]
+if(minmax == 'min'): 
+    otimo *= -1
+
+
+
+if(multi):
+    M[0][np.isclose(M[0], 0)] = 0
+    print('iteração: Otimo 2')
+    print('c: ',M[0])
+
+    for i in range(M.shape[1]):
+        if(not (np.all(np.isin(M.T[i][1:],[0,1])) and M.T[i][1:].sum()==1) and M.T[i][0] == 0):
+            pivo = i
+            break
+    print('pivo: ',pivo)
+
+    divs = protdiv(M.T[-1][1:],M.T[pivo][1:])
+    lchoice = (np.argmin(divs)+1) 
+    print('lchoice: ',lchoice)  
+
+    temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=2)
+    M[lchoice] = (M[lchoice]/M[lchoice][pivo]).round(decimals=2)
+    id[lchoice] = temp
+
+    for i in range(M.shape[0]):
+        if(i == lchoice or M[i][pivo] == 0): continue
+        M = Pivot(M,i,lchoice,-(round(M[i][pivo]/M[lchoice][pivo],2)),id)
+
+    Ipos, _ = findIdent(M)
+    x2 = np.nonzero(Ipos)
+    print(M,'\n---------\n')
+    print(id,'\n---------\n')
+    print('xxxxxxxx')
+
+print('Status: otimo')
+print('Objetivo: ',otimo)
+if(multi):
+    print('Solucoes:')
+    print(x[0])
+    print(x2[0])
+else:
+    print('Solucao:')
+    print(x[0])
+print('Dual:')
+print(id[0])
 
 # (A,b,c,obj) = Abc(M)
 # print(A,b,c,obj)
