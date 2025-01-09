@@ -61,6 +61,7 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
     with open(filename,'r') as f:
         #lendo arquivo
         nvars = int(f.readline())
+        ogvars = nvars
         nres = int(f.readline())
         VarsRes = list(map(float, f.readline().split()))
         coefs = f.readline().split()
@@ -145,7 +146,7 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
 
     if(minmax == 'min'):
         M[0] *= -1
-    return(M, minmax)
+    return(M, minmax, ogvars)
 
 def protdiv(objs, col):
   out = []
@@ -159,7 +160,7 @@ def protdiv(objs, col):
 
 def findIdent(M): #funcao que acha o que falta da identeidade e para a canonizacao da matriz
     Ipos = [False]*(M.shape[0]-1)
-    Cpos = [False]*(M.shape[0]-1)
+    Cpos = [-1]*(M.shape[1]-1)
     count = 0
     incompletos = []
     for col in M.T:
@@ -168,12 +169,12 @@ def findIdent(M): #funcao que acha o que falta da identeidade e para a canonizac
                 if(M[i][count]==1):
                     Ipos[i-1] = True
                     if(M[0][count]==0):
-                        Cpos[i-1] = True
+                        Cpos[count] = i
                     else:
                         incompletos.append((count,i))
                     break
         count += 1
-    return Ipos,incompletos
+    return Ipos,incompletos, Cpos
 
 def Caminhador(M, id):
     cminus = M[0]
@@ -227,7 +228,7 @@ def Simplex(M,id,minmax = 'max'): #simplex
     if(not CanonCheck(M)):
        print('not canon')
        print(M)      
-       (Ipos,incompletos) = findIdent(M)
+       (Ipos,incompletos,_) = findIdent(M)
 
        if(np.any(Ipos)):
             for col,row in incompletos:
@@ -244,7 +245,7 @@ def Simplex(M,id,minmax = 'max'): #simplex
                     auxM = np.insert(auxM,auxM.shape[1]-1,I.T[i],axis=1)
                     n_aux_r += 1
             auxM[0] = auxc
-            (auxIpos,auxincompletos) = findIdent(auxM)
+            (auxIpos,auxincompletos,_) = findIdent(auxM)
             for col,row in auxincompletos:
                 auxM = Pivot(auxM,0,row,-(auxM[0][col]/auxM[row][col]),id)
             auxM[0] = -auxM[0]
@@ -262,7 +263,7 @@ def Simplex(M,id,minmax = 'max'): #simplex
                 M[0] = backup[0]
                 print('pos\n',M)
                 print('id\n',id)
-                (fIpos,f_incompletos) = findIdent(M)
+                (fIpos,f_incompletos,_) = findIdent(M)
                 print(fIpos, f_incompletos)
                 if(np.all(fIpos)):
                     for col,row in f_incompletos:
@@ -279,7 +280,7 @@ def Simplex(M,id,minmax = 'max'): #simplex
 
 
     
-(M, minmax) = MatrizInit('test.txt')
+(M, minmax, nvars) = MatrizInit('test.txt')
 id = np.insert(np.identity(M.shape[0]-1),0,0,axis=0)
 
 status = Simplex(M,id,minmax)
@@ -291,10 +292,10 @@ else:
 l = M[0][:-1].copy().tolist() #numero de 0 em c
 multi = l.count(0) > M.shape[0]
 
-Ipos, _ = findIdent(M)
-x = np.nonzero(Ipos)
-print(Ipos)
-x = M[0][Ipos]
+__, _, Cpos = findIdent(M)
+x = []
+for i in range(M.shape[1]-1):
+    x.append(M[Cpos[i]][-1])
 
 
 otimo = M[0][-1]
@@ -326,8 +327,10 @@ if(multi):
         if(i == lchoice or M[i][pivo] == 0): continue
         M = Pivot(M,i,lchoice,-(round(M[i][pivo]/M[lchoice][pivo],2)),id)
 
-    Ipos, _ = findIdent(M)
-    x2 = np.nonzero(Ipos)
+    __, _, Cpos= findIdent(M)
+    x2 = []
+    for i in range(M.shape[1]-1):
+        x2.append(M[Cpos[i]][-1])
     print(M,'\n---------\n')
     print(id,'\n---------\n')
     print('xxxxxxxx')
@@ -336,11 +339,11 @@ print('Status: otimo')
 print('Objetivo: ',otimo)
 if(multi):
     print('Solucoes:')
-    print(x[0])
-    print(x2[0])
+    print(x[:nvars])
+    print(x2[:nvars])
 else:
     print('Solucao:')
-    print(x[0])
+    print(x[:nvars])
 print('Dual:')
 print(id[0])
 
