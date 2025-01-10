@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 
 
 #Função de elim de linhas LI fornecido pelo professor Cristiano Arbex
@@ -31,12 +32,12 @@ def makeMatrixFullRank(A):
 #######################################################
 
 
-def Pivot(M, lalvo, l2, mul, id):
+def Pivot(M, lalvo, l2, mul, id, decimals):
   aux = M[lalvo] + M[l2]*mul
-  M[lalvo] = aux.round(decimals=2)
+  M[lalvo] = aux.round(decimals=decimals)
 
   auxi = id[lalvo] + id[l2]*mul
-  id[lalvo] = auxi.round(decimals=2)
+  id[lalvo] = auxi.round(decimals=decimals)
   return M
 
 def CanonCheck(M): #checa se uma matriz esta na forma canonica
@@ -148,13 +149,13 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
         M[0] *= -1
     return(M, minmax, ogvars)
 
-def protdiv(objs, col):
+def protdiv(objs, col,decimals = 2):
   out = []
   for i in range(len(col)):
     if(col[i] <= 0):
       out.append(float('inf'))
     else:
-      out.append(round(objs[i]/col[i],2))
+      out.append(round(objs[i]/col[i],decimals))
   print(out) #bom print pro passo a passo
   return out
 
@@ -176,7 +177,7 @@ def findIdent(M): #funcao que acha o que falta da identeidade e para a canonizac
         count += 1
     return Ipos,incompletos, Cpos
 
-def Caminhador(M, id):
+def Caminhador(M, id,policy, decimals = 2):
     cminus = M[0]
     print('xxxxxxxxxxx','\n',id,'\n',M,'\n---------\n')
     itr = 1
@@ -188,22 +189,31 @@ def Caminhador(M, id):
         print('iteração: ',itr)
         print('c: ',cminus)
 
-        pivo = np.argmin(cminus[:-1])
+        pivo = np.argmax((cminus[:-1])*-1)
+        if(policy == 'smallest'):
+            pivo = np.argmin(cminus[:-1])
+        if(policy == 'bland'):
+            counter = 0
+            for item in cminus[:-1]:
+                if(item < 0):
+                    pivo = counter
+                    break
+                counter += 1
         print('pivo: ',pivo)
 
-        divs = protdiv(M.T[-1][1:],M.T[pivo][1:])
+        divs = protdiv(M.T[-1][1:],M.T[pivo][1:],decimals)
         if(divs.count(float('inf')) == len(divs)):
             return('ilimitado')
         lchoice = (np.argmin(divs)+1) 
         print('lchoice: ',lchoice)  
 
-        temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=2)
-        M[lchoice] = (M[lchoice]/M[lchoice][pivo]).round(decimals=2)
+        temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=decimals)
+        M[lchoice] = (M[lchoice]/M[lchoice][pivo]).round(decimals=decimals)
         id[lchoice] = temp
 
         for i in range(M.shape[0]):
             if(i == lchoice or M[i][pivo] == 0): continue
-            M = Pivot(M,i,lchoice,-(round(M[i][pivo]/M[lchoice][pivo],2)),id)
+            M = Pivot(M,i,lchoice,-(round(M[i][pivo]/M[lchoice][pivo])),id,decimals)
 
         cminus = (M[0])
         if(np.all(cminus[:-1] >= 0)):
@@ -214,7 +224,7 @@ def Caminhador(M, id):
     print('xxxxxxxx')
     return M, id
 
-def Simplex(M,id,minmax = 'max'): #simplex
+def Simplex(M,id,minmax = 'max', policy  = 'largest', decimals = 2): #simplex
     print('iniciei')
     backup = M.copy()
     for i in range(1,M.shape[0]):
@@ -232,7 +242,7 @@ def Simplex(M,id,minmax = 'max'): #simplex
 
        if(np.any(Ipos)):
             for col,row in incompletos:
-                M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id)
+                M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id,decimals)
 
        if(np.any(Ipos.count(False))):
             auxc = [0]*(M.shape[1]-1) + [1]*Ipos.count(False) + [0]
@@ -247,9 +257,9 @@ def Simplex(M,id,minmax = 'max'): #simplex
             auxM[0] = auxc
             (auxIpos,auxincompletos,_) = findIdent(auxM)
             for col,row in auxincompletos:
-                auxM = Pivot(auxM,0,row,-(auxM[0][col]/auxM[row][col]),id)
+                auxM = Pivot(auxM,0,row,-(auxM[0][col]/auxM[row][col]),id,decimals)
             auxM[0] = -auxM[0]
-            tup = Caminhador(auxM,id)
+            tup = Caminhador(auxM,id,policy,decimals)
             if(type(tup) == str):
                 return("ilimitado")
             (auxM, id) = tup
@@ -267,23 +277,39 @@ def Simplex(M,id,minmax = 'max'): #simplex
                 print(fIpos, f_incompletos)
                 if(np.all(fIpos)):
                     for col,row in f_incompletos:
-                        M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id)
+                        M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id,decimals)
                     print('pos2\n',M)
                     M[0] *= -1
                 else: return('Erro!')
             #return('canonize')
-    tup = Caminhador(M,id)
+    tup = Caminhador(M,id,policy,decimals)
     if(type(tup) == str):
         return('ilimitado')
     (M,id) = tup
     return M, id  
 
 
+
+filename = sys.argv[1]
+args = sys.argv[2:]
+decimals = 2
+digits = 2
+policy = 'largest'
+
+for param, val in zip(args[::2],args[1::2]):
+    if(param == '--decimals'):
+        decimals = int(val)
+    if(param == '--digits'):
+        digits = int(val)
+    if(param == '--policy'):
+        policy = val
     
+np.set_printoptions(precision=digits)
+
 (M, minmax, nvars) = MatrizInit('test.txt')
 id = np.insert(np.identity(M.shape[0]-1),0,0,axis=0)
 
-status = Simplex(M,id,minmax)
+status = Simplex(M,id,minmax,policy,decimals)
 if(type(status) == str):
     print('Status: ',status)
     exit(0)
@@ -315,17 +341,17 @@ if(multi):
             break
     print('pivo: ',pivo)
 
-    divs = protdiv(M.T[-1][1:],M.T[pivo][1:])
+    divs = protdiv(M.T[-1][1:],M.T[pivo][1:],decimals)
     lchoice = (np.argmin(divs)+1) 
     print('lchoice: ',lchoice)  
 
-    temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=2)
-    M[lchoice] = (M[lchoice]/M[lchoice][pivo]).round(decimals=2)
+    temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=decimals)
+    M[lchoice] = (M[lchoice]/M[lchoice][pivo]).round(decimals=decimals)
     id[lchoice] = temp
 
     for i in range(M.shape[0]):
         if(i == lchoice or M[i][pivo] == 0): continue
-        M = Pivot(M,i,lchoice,-(round(M[i][pivo]/M[lchoice][pivo],2)),id)
+        M = Pivot(M,i,lchoice,-(round(M[i][pivo]/M[lchoice][pivo],decimals)),id,decimals)
 
     __, _, Cpos= findIdent(M)
     x2 = []
