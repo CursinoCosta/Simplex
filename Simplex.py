@@ -13,7 +13,7 @@ def makeMatrixFullRank(A):
     row = 1
     rowsEliminated = []
     counter = 0
-    while 1:
+    while row >= A.shape[0]:
         counter += 1
         B = A[0:(row+1), :]
         C = np.linalg.qr(B.T)[1]
@@ -24,7 +24,7 @@ def makeMatrixFullRank(A):
         else:
             row += 1
         # end if
-        if row >= A.shape[0]: break
+        #if : break
     # end for
     return A, rowsEliminated
 # end makeMatrixFullRank
@@ -34,10 +34,10 @@ def makeMatrixFullRank(A):
 
 def Pivot(M, lalvo, l2, mul, id, decimals):
   aux = M[lalvo] + M[l2]*mul
-  M[lalvo] = aux.round(decimals=decimals)
+  M[lalvo] = np.round(aux,decimals)
 
   auxi = id[lalvo] + id[l2]*mul
-  id[lalvo] = auxi.round(decimals=decimals)
+  id[lalvo] = np.round(auxi,decimals)
   return M
 
 def CanonCheck(M): #checa se uma matriz esta na forma canonica
@@ -122,7 +122,6 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
     for l in A:
         M.append(l+[b[aux]])
         aux += 1
-    print(M)
     M = np.array(M,dtype=float)
 
 #tornando todas as variaveis restritas >=0
@@ -149,6 +148,12 @@ def MatrizInit(filename): #le a entrada e retorna a FPI correspondente
         M[0] *= -1
     return(M, minmax, ogvars)
 
+
+def Mprint(id,M):
+    for i in range(M.shape[0]):
+        print(id[i],' | ',M[i])
+        
+
 def protdiv(objs, col,decimals = 2):
   out = []
   for i in range(len(col)):
@@ -156,6 +161,7 @@ def protdiv(objs, col,decimals = 2):
       out.append(float('inf'))
     else:
       out.append(round(objs[i]/col[i],decimals))
+  print('Escolhendo linha:')    
   print(out) #bom print pro passo a passo
   return out
 
@@ -179,7 +185,7 @@ def findIdent(M): #funcao que acha o que falta da identeidade e para a canonizac
 
 def Caminhador(M, id,policy, decimals = 2):
     cminus = M[0]
-    print('xxxxxxxxxxx','\n',id,'\n',M,'\n---------\n')
+    print('Caminhando no espaço de busca:')
     itr = 1
     otimo = False
     if(np.all(cminus[:-1] >= 0)):
@@ -188,6 +194,7 @@ def Caminhador(M, id,policy, decimals = 2):
         M[0][np.isclose(M[0], 0)] = 0
         print('iteração: ',itr)
         print('c: ',cminus)
+        Mprint(id,M)
 
         pivo = np.argmax((cminus[:-1])*-1)
         if(policy == 'smallest'):
@@ -205,10 +212,10 @@ def Caminhador(M, id,policy, decimals = 2):
         if(divs.count(float('inf')) == len(divs)):
             return('ilimitado')
         lchoice = (np.argmin(divs)+1) 
-        print('lchoice: ',lchoice)  
+        print('linha escolhida: ',lchoice)  
 
-        temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=decimals)
-        M[lchoice] = (M[lchoice]/M[lchoice][pivo]).round(decimals=decimals)
+        temp = np.round((id[lchoice]/M[lchoice][pivo]),decimals)
+        M[lchoice] = np.round((M[lchoice]/M[lchoice][pivo]),decimals)
         id[lchoice] = temp
 
         for i in range(M.shape[0]):
@@ -219,30 +226,35 @@ def Caminhador(M, id,policy, decimals = 2):
         if(np.all(cminus[:-1] >= 0)):
             otimo = True
         itr+=1
-        print(M,'\n---------\n')
-        print(id,'\n---------\n')
-    print('xxxxxxxx')
+        Mprint(id,M)
+        print('xxxxxxxxxxxxxxxx\n')
+    print('----------------')
     return M, id
 
+
+
 def Simplex(M,id,minmax = 'max', policy  = 'largest', decimals = 2): #simplex
-    print('iniciei')
     backup = M.copy()
     for i in range(1,M.shape[0]):
        if(M[i][-1] < 0):
           M[i] *= -1
           id[i] *= -1
     M[0] *= -1
-    print('************','\n',id,'\n',M,'\n---------\n')
+    print('Tableau incial:')
+    Mprint(id,M)
+    print('\n')
     itr = 1
     otimo = False
     if(not CanonCheck(M)):
-       print('not canon')
-       print(M)      
+       print('----------------')    
+       print('Processo de canonização')   
        (Ipos,incompletos,_) = findIdent(M)
 
        if(np.any(Ipos)):
             for col,row in incompletos:
                 M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id,decimals)
+            print('Pivoteamento para c')
+            Mprint(id,M)
 
        if(np.any(Ipos.count(False))):
             auxc = [0]*(M.shape[1]-1) + [1]*Ipos.count(False) + [0]
@@ -263,25 +275,19 @@ def Simplex(M,id,minmax = 'max', policy  = 'largest', decimals = 2): #simplex
             if(type(tup) == str):
                 return("ilimitado")
             (auxM, id) = tup
-            print('a',auxM)
-            print(id)
             if(auxM[0][-1] != 0):
                 return('inviavel')
             else:
                 M = np.delete(auxM, [x for x in range(-(n_aux_r+1),-1)],axis=1)
-                print('pre\n',M)
                 M[0] = backup[0]
-                print('pos\n',M)
-                print('id\n',id)
                 (fIpos,f_incompletos,_) = findIdent(M)
-                print(fIpos, f_incompletos)
                 if(np.all(fIpos)):
                     for col,row in f_incompletos:
                         M = Pivot(M,0,row,-(M[0][col]/M[row][col]),id,decimals)
-                    print('pos2\n',M)
                     M[0] *= -1
                 else: return('Erro!')
-            #return('canonize')
+            print('Canonizada:')
+            Mprint(id,M)
     tup = Caminhador(M,id,policy,decimals)
     if(type(tup) == str):
         return('ilimitado')
@@ -293,7 +299,7 @@ def Simplex(M,id,minmax = 'max', policy  = 'largest', decimals = 2): #simplex
 filename = sys.argv[1]
 args = sys.argv[2:]
 decimals = 2
-digits = 2
+digits = 1
 policy = 'largest'
 
 for param, val in zip(args[::2],args[1::2]):
@@ -304,9 +310,9 @@ for param, val in zip(args[::2],args[1::2]):
     if(param == '--policy'):
         policy = val
     
-np.set_printoptions(precision=digits)
+np.set_printoptions(formatter={'float': lambda x: f"{x: .{digits}f}"})
 
-(M, minmax, nvars) = MatrizInit('test.txt')
+(M, minmax, nvars) = MatrizInit(filename)
 id = np.insert(np.identity(M.shape[0]-1),0,0,axis=0)
 
 status = Simplex(M,id,minmax,policy,decimals)
@@ -345,8 +351,8 @@ if(multi):
     lchoice = (np.argmin(divs)+1) 
     print('lchoice: ',lchoice)  
 
-    temp = (id[lchoice]/M[lchoice][pivo]).round(decimals=decimals)
-    M[lchoice] = (M[lchoice]/M[lchoice][pivo]).round(decimals=decimals)
+    temp = np.round((id[lchoice]/M[lchoice][pivo]),decimals)
+    M[lchoice] = np.round((M[lchoice]/M[lchoice][pivo]),decimals)
     id[lchoice] = temp
 
     for i in range(M.shape[0]):
