@@ -1,8 +1,0 @@
-1- entender matrizes no numpy OK
-2- ler entrada OK
-3- Pivoteador e Abc OK
-4- Transformar em PFI OK
-5- Simplex OK
-6- Busca de base inicial (Auxiliar) OK
-7- Impressão, minmax OK, multi otimo OK(acho) e parametros de entrada
-8- Testes
